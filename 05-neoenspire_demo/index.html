@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Neo-Enspire</title>
+    </head>
+    <body>
+        <h1>Neo-Enspire</h1>
+
+        <!-- LOGIN SECTION -->
+        <div id="login-section">
+            <h2>Login</h2>
+            <input id="code" placeholder="Student code (e.g. s00000000)" />
+            <input id="password" type="password" placeholder="Password" />
+            <button onclick="login()">Login</button>
+            <pre id="login-status"></pre>
+        </div>
+
+        <!-- MAIN SECTION (hidden until login) -->
+        <div id="main-section" style="display: none">
+            <p id="greeting"></p>
+            <hr />
+            <h2>Timetable</h2>
+            <button onclick="fetchTimetable()">Fetch Timetable</button>
+            <div id="timetable-output"></div>
+            <hr />
+            <h2>Grades</h2>
+            <select id="semester" onchange="fetchGrades()">
+                <option value="31">2025-2026 Term 2 (Current)</option>
+                <option value="2">2025-2026 Term 1</option>
+                <option value="30">2024-2025 Term 2</option>
+                <option value="29">2024-2025 Term 1</option>
+                <option value="28">2023-2024 Term 2</option>
+                <option value="27">2023-2024 Term 1</option>
+                <option value="26">2022-2023 Term 2</option>
+                <option value="25">2022-2023 Term 1</option>
+            </select>
+            <div id="grades-output"></div>
+            <hr />
+            <h2>Debug</h2>
+            <label
+                >Fetch page: <input id="debug-path" value="/" size="40"
+            /></label>
+            <button onclick="fetchDebugPage()">Fetch</button>
+            <pre
+                id="debug-output"
+                style="
+                    max-height: 400px;
+                    overflow: auto;
+                    border: 1px solid #ccc;
+                    padding: 8px;
+                    white-space: pre-wrap;
+                    font-size: 12px;
+                "
+            ></pre>
+            <hr />
+            <button onclick="logout()">Logout</button>
+        </div>
+
+        <script>
+            let token = localStorage.getItem("neo_token");
+            let studentId = localStorage.getItem("neo_sid");
+            let profile = JSON.parse(
+                localStorage.getItem("neo_profile") || "null",
+            );
+
+            // Restore session on page load
+            if (token) {
+                showMain();
+            }
+
+            function showMain() {
+                document.getElementById("login-section").style.display = "none";
+                document.getElementById("main-section").style.display = "block";
+                const name = profile
+                    ? `${profile.nickName || profile.firstName || ""} (${profile.userName || ""})`
+                    : "";
+                document.getElementById("greeting").textContent = name
+                    ? `Hi, ${name}`
+                    : "Logged in";
+            }
+
+            async function login() {
+                const code = document.getElementById("code").value;
+                const password = document.getElementById("password").value;
+                const status = document.getElementById("login-status");
+                status.textContent = "Logging in...";
+
+                try {
+                    const res = await fetch("/api/login", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ code, password }),
+                    });
+                    const data = await res.json();
+                    status.textContent = JSON.stringify(data, null, 2);
+
+                    if (data.ok) {
+                        token = data.token;
+                        studentId = data.studentId;
+                        profile = data.profile;
+                        localStorage.setItem("neo_token", token);
+                        if (studentId)
+                            localStorage.setItem("neo_sid", studentId);
+                        if (profile)
+                            localStorage.setItem(
+                                "neo_profile",
+                                JSON.stringify(profile),
+                            );
+                        showMain();
+                    }
+                } catch (err) {
+                    status.textContent = "Error: " + err.message;
+                }
+            }
+
+            async function fetchTimetable() {
+                const output = document.getElementById("timetable-output");
+                output.textContent = "Loading...";
+
+                try {
+                    const res = await fetch("/api/timetable", {
+                        headers: { "X-Token": token },
+                    });
+                    const data = await res.json();
+
+                    if (data.ResultType !== 0) {
+                        output.textContent = "Error: " + JSON.stringify(data);
+                        return;
+                    }
+
+                    // Render a simple text table
+                    const days = ["Mon", "Tue", "Wed", "Thu", "Fri"];
+                    let html =
+                        "<table border='1' cellpadding='4' cellspacing='0'>";
+                    html += "<tr><th>Period</th>";
+                    days.forEach((d) => (html += `<th>${d}</th>`));
+                    html += "</tr>";
+
+                    for (const period of data.Data.TimetableList) {
+                        html += `<tr><td><b>P${period.LessonNumber}</b></td>`;
+                        for (const entry of period.TimetableList) {
+                            if (entry) {
+                                html += `<td>${entry.SubjectName}<br><small>${entry.ClassRoomNo} | ${entry.TeacherName}</small></td>`;
+                            } else {
+                                html += "<td>-</td>";
+                            }
+                        }
+                        html += "</tr>";
+                    }
+                    html += "</table>";
+                    output.innerHTML = html;
+                } catch (err) {
+                    output.textContent = "Error: " + err.message;
+                }
+            }
+
+            async function fetchGrades() {
+                const output = document.getElementById("grades-output");
+                output.textContent = "Loading...";
+
+                try {
+                    const yearId = document.getElementById("semester").value;
+                    const res = await fetch(`/api/grades?yearId=${yearId}`, {
+                        headers: { "X-Token": token },
+                    });
+                    const data = await res.json();
+
+                    if (data.ResultType !== 0) {
+                        output.textContent = "Error: " + JSON.stringify(data);
+                        return;
+                    }
+
+                    if (!data.Data || data.Data.length === 0) {
+                        output.textContent = "No grades for this semester.";
+                        return;
+                    }
+
+                    let html =
+                        "<table border='1' cellpadding='4' cellspacing='0'>";
+                    html +=
+                        "<tr><th>Subject</th><th>A1</th><th>A2</th><th>A3</th><th>A4</th><th>HW</th><th>Final</th></tr>";
+
+                    for (const s of data.Data) {
+                        html += `<tr><td>${s.SubjectName}</td>`;
+                        for (const key of ["1", "2", "3", "4", "H", "F"]) {
+                            const raw = s["Score" + key] || "";
+                            const ib = s["IbScore" + key] || "";
+                            if (raw || ib) {
+                                html += `<td>${raw}${ib ? " (" + ib + ")" : ""}</td>`;
+                            } else {
+                                html += "<td>-</td>";
+                            }
+                        }
+                        html += "</tr>";
+                    }
+                    html += "</table>";
+                    output.innerHTML = html;
+                } catch (err) {
+                    output.textContent = "Error: " + err.message;
+                }
+            }
+
+            async function fetchDebugPage() {
+                const path = document.getElementById("debug-path").value;
+                const output = document.getElementById("debug-output");
+                output.textContent = "Loading...";
+
+                try {
+                    const res = await fetch(
+                        `/api/debug/page?path=${encodeURIComponent(path)}`,
+                        {
+                            headers: { "X-Token": token },
+                        },
+                    );
+                    output.textContent = await res.text();
+                } catch (err) {
+                    output.textContent = "Error: " + err.message;
+                }
+            }
+
+            async function logout() {
+                await fetch("/api/logout", {
+                    method: "POST",
+                    headers: { "X-Token": token },
+                });
+                token = null;
+                studentId = null;
+                profile = null;
+                localStorage.removeItem("neo_token");
+                localStorage.removeItem("neo_sid");
+                localStorage.removeItem("neo_profile");
+                document.getElementById("login-section").style.display =
+                    "block";
+                document.getElementById("main-section").style.display = "none";
+            }
+        </script>
+    </body>
+</html>
