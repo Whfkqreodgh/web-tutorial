@@ -10,10 +10,14 @@ Complete the JavaScript part of the ```index.html``` file.
 
 If you ever get stuck, feel free to check the ```hint.md``` for hints and the ```solution.js``` for the solution.
 
+## Go To
+
 [→ Hints](./hint.md)
 
 [→ Solution](./solution.js)
 
 [→ Additional Features](./features.md)
+
+[→ Final Version](./final.js)
 
 [← Back to Home](../README.md)
