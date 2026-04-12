@@ -86,3 +86,67 @@ function handleGuess(guess)
 	}
 }
 ```
+
+## Fixes
+
+Base variables should be stated at the top of ```<script>```:
+
+```
+let min, max, target;
+let attemptsLeft;
+let maxAttempts = 10;
+let score = 0;
+```
+
+Finally, you need to hook everything together with event listeners:
+
+```
+// Get the HTML elements
+
+const form = document.querySelector("form");
+const input = document.getElementById("userinput");
+const answerDiv = document.getElementById("answer");
+const restartBtn = document.getElementById("restartBtn");
+
+form.addEventListener("submit", function(event) {
+	event.preventDefault();
+
+	const guess = Number(input.value);
+
+	if (isNaN(guess)) {
+		answerDiv.textContent = "Enter a valid number!";
+		return;
+	}
+
+	handleGuess(guess);
+	input.value = "";
+});
+
+restartBtn.addEventListener("click", initGame);
+```
+
+## Optional Upgrades (Not Covered)
+
+If you want to go **EVEN FURTHER**, here are some ideas for you:
+
+- Make the number of attempts adjust to the range
+
+- Add difficulty levels
+
+  - Easy: Allow inefficient strategies
+  - Hard: Must be played perfectly
+  - Impossible: Requires luck
+
+- High score tracking using local storage
+
+- Hints on distance to target
+
+## Go To
+
+[→ Hints](./hint.md)
+
+[→ Solution](./solution.js)
+
+[→ Final Version](./final.js)
+
+[← Back to Home](../README.md)
