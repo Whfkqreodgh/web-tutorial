@@ -9,3 +9,11 @@ The user will guess the number. You need to indicate whether the guess is **too 
 Complete the JavaScript part of the ```index.html``` file.
 
 If you ever get stuck, feel free to check the ```hint.md``` for hints and the ```solution.js``` for the solution.
+
+[→ Hints](./hint.md)
+
+[→ Solution](./solution.js)
+
+[→ Additional Features](./features.md)
+
+[← Back to Home](../README.md)
